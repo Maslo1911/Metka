@@ -1,34 +1,46 @@
 # Название сервиса: Metka
 
 ## Запуск приложения
-Фронтенд
+
+### 1. База данных
+Установить PostgreSQL, создать БД `metka` и применить схему:
 ```bash
+psql -U postgres -c "CREATE DATABASE metka"
+psql -U postgres -d metka -f backend/schema.sql
+```
+> ⚠️ Пользователи из тестовых данных `schema.sql` имеют заглушки вместо bcrypt-хэшей, войти под ними нельзя.
+> Создайте аккаунт через форму регистрации в приложении (или `POST /api/auth/register`).
+
+### 2. Бэкенд
+```bash
+cd backend
+python -m venv .venv
+.venv\Scripts\activate          # Linux/macOS: source .venv/bin/activate
+pip install -r requirements.txt
+copy .env.example .env          # Linux/macOS: cp .env.example .env  — и поправить DATABASE_URL / SECRET_KEY
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+Swagger: http://localhost:8000/docs
+
+### 3. Фронтенд — два режима
+
+**Разработка (горячая перезагрузка)** — бэкенд на :8000 запущен, затем:
+```bash
+cd frontend
 npm install
 npm run dev
 ```
-Откройте адрес, который покажет Vite (обычно `http://localhost:5173`). Для production-сборки: `npm run build`.
+Открыть http://localhost:5173. Запросы на `/api` Vite проксирует на `localhost:8000` (см. `vite.config.js`).
 
-Бэкенд
-1. Установить PostgreSQL, создать БД `metka`.
-2. Склонировать репозиторий, перейти в папку.
-3. Создать venv и активировать:
-   ```
-   python -m venv .venv
-   .venv\Scripts\activate
-   ```
-4. Установить зависимости:
-   ```
-   pip install -r requirements.txt
-   ```
-5. Убедиться, что в `app/core/config.py` правильный `DATABASE_URL`
-   (по умолчанию: `postgresql://postgres:postgres@localhost:5432/metka`).
-6. Запустить:
-   ```
-   uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-   ```
-7. Открыть Swagger: http://localhost:8000/docs
+**Одним сервером (как в production)** — собрать фронтенд, и FastAPI сам его раздаст:
+```bash
+cd frontend
+npm install
+npm run build
+```
+Затем перезапустить бэкенд и открыть http://localhost:8000 — приложение и API на одном адресе.
 
-
+Если API размещён на другом домене, задайте в `frontend/.env`: `VITE_API_URL=https://api.example.com`.
 
 # Целевая аудитория
 
