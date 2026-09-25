@@ -1,9 +1,3 @@
--- =====================================================================
--- Metka — БД строго по ERD (images/erd metka.png). PostgreSQL.
--- Исправленная версия: ограничения, индексы, ON DELETE, тестовые данные.
--- Названия таблиц и полей не изменены.
--- =====================================================================
-
 DROP TABLE IF EXISTS note       CASCADE;
 DROP TABLE IF EXISTS tag        CASCADE;
 DROP TABLE IF EXISTS "user"     CASCADE;
@@ -14,7 +8,7 @@ DROP TABLE IF EXISTS permission CASCADE;
 -- 1. permission
 -- ---------------------------------------------------------------------
 CREATE TABLE permission (
-    id    INT          PRIMARY KEY,          -- без IDENTITY, т.к. связан 1:1 с role
+    id    INT          PRIMARY KEY,
     name  VARCHAR(100) NOT NULL
 );
 
@@ -22,11 +16,11 @@ CREATE TABLE permission (
 -- 2. role
 -- ---------------------------------------------------------------------
 CREATE TABLE role (
-    id    INT         PRIMARY KEY,           -- без IDENTITY, т.к. связан 1:1 с permission
+    id    INT         PRIMARY KEY,
     name  VARCHAR(50) NOT NULL
 );
 
--- Взаимные FK (как на ERD). DEFERRABLE — чтобы можно было вставлять в одной транзакции.
+-- Взаимные FK
 ALTER TABLE permission
     ADD CONSTRAINT fk_permission_role
     FOREIGN KEY (id) REFERENCES role (id)
@@ -48,7 +42,6 @@ CREATE TABLE "user" (
     role_id   INT          NOT NULL REFERENCES role (id) ON DELETE RESTRICT
 );
 
--- Уникальный логин (обязательно для аутентификации)
 CREATE UNIQUE INDEX idx_user_login ON "user" (login);
 
 -- ---------------------------------------------------------------------
@@ -96,7 +89,6 @@ CREATE INDEX idx_note_tag_tag_id  ON note_tag (tag_id);
 
 BEGIN;
 
--- Роли и права (id совпадают из-за 1:1)
 INSERT INTO role (id, name) VALUES
     (1, 'admin'),
     (2, 'user');
@@ -113,7 +105,7 @@ INSERT INTO "user" (name, login, password, role_id) VALUES
     ('Анна Козлова',    'anna',     'hash_anna_4',  2),
     ('Админ Системы',   'admin',    'hash_admin_5', 1);
 
--- Заметки (10 штук)
+-- Заметки 10
 INSERT INTO note (title, text, user_id, date) VALUES
     ('Купить хлеб',           'Не забыть цельнозерновой',           1, NOW() - INTERVAL '2 days'),
     ('Позвонить маме',        'Вечером после 19:00',                1, NOW() - INTERVAL '1 day'),
@@ -126,7 +118,7 @@ INSERT INTO note (title, text, user_id, date) VALUES
     ('Заметка админа',        'Проверить логи и модерацию',         5, NOW()),
     ('Рецепт пасты',          'Спагетти + томатный соус + базилик', 4, NOW() - INTERVAL '4 days');
 
--- Теги (привязаны к пользователям и связаны со заметками через note_tag)
+-- Теги
 INSERT INTO tag (name, color, user_id) VALUES
     ('еда',        '#FF6B6B', 1),
     ('личное',     '#4ECDC4', 1),
@@ -148,7 +140,7 @@ INSERT INTO note_tag (note_id, tag_id) VALUES
 COMMIT;
 
 -- =====================================================================
--- 3 SELECT-запроса (доказательство, что БД работает)
+-- 3 SELECT-запроса
 -- =====================================================================
 
 -- 1. Все заметки пользователя с id = 1 + связанные теги
