@@ -65,7 +65,7 @@ function Home({ notes, tags, user, navigate, onLogout }) {
   const [profileOpen, setProfileOpen] = useState(false)
   const initials = (user?.name || user?.login || '?').split(/\s+/).filter(Boolean).slice(0, 2).map(word => word[0]).join('').toUpperCase()
   const shown = useMemo(() => notes.filter(note => {
-    const matchesTag = activeTag === 'all' || note.tagId === activeTag
+    const matchesTag = activeTag === 'all' || note.tagIds?.includes(Number(activeTag))
     const matchesQuery = `${note.title} ${note.body}`.toLocaleLowerCase('ru').includes(query.trim().toLocaleLowerCase('ru'))
     return matchesTag && matchesQuery
   }), [notes, activeTag, query])
@@ -81,7 +81,7 @@ function Home({ notes, tags, user, navigate, onLogout }) {
     </header>
     <main className="px-5 pb-12 sm:px-9">
       <nav aria-label="Фильтр по тегам" className="mb-10 mt-8 flex flex-wrap items-center gap-2"><span className="mr-4 text-[15px] text-[#6b6e71]">Теги</span><button type="button" onClick={() => setActiveTag('all')} className={`rounded-full px-5 py-2 text-sm ${activeTag === 'all' ? 'bg-[#202020] text-white' : 'border border-[#e4e5e6] bg-white text-[#555]'}`}>Все · {notes.length}</button>{tags.map(tag => <button key={tag.id} type="button" onClick={() => setActiveTag(tag.id)} className="rounded-full px-5 py-2 text-sm transition hover:brightness-[.97]" style={{ backgroundColor: activeTag === tag.id ? colorOf(tag.color).dot : colorOf(tag.color).bg, color: activeTag === tag.id ? '#fff' : colorOf(tag.color).text }}>{tag.name}</button>)}<button type="button" onClick={() => navigate('/tags')} className="ml-1 inline-flex items-center gap-2 rounded-full border border-dashed border-[#d6d8da] px-4 py-2 text-sm text-[#72777a] hover:bg-[#fafafa]"><Icon name="tag" size={16} />Управление</button></nav>
-      {shown.length ? <div className="grid grid-cols-1 gap-4 md:grid-cols-2">{shown.map(note => <button key={note.id} type="button" onClick={() => navigate(`/notes/${note.id}`)} className="group flex min-h-[196px] flex-col rounded-[14px] border border-[#e3e3e3] bg-white p-6 text-left shadow-[0_3px_9px_rgba(0,0,0,.025)] transition hover:border-[#c6d4e6] hover:shadow-[0_8px_20px_rgba(0,0,0,.06)]"><h2 className="mb-3 line-clamp-2 text-[20px] font-bold leading-6 text-[#202020]">{note.title}</h2><p className="line-clamp-2 text-[15.5px] leading-[1.45] text-[#73777b]">{note.body.replace(/\n+/g, ' ')}</p><div className="mt-auto flex items-end justify-between gap-3 pt-5"><div className="flex flex-wrap gap-1.5">{note.tagId != null && <TagBadge tag={tags.find(tag => tag.id === note.tagId)} />}</div><time dateTime={note.date} className="shrink-0 pb-1 text-[13px] text-[#9a9da1]">{shortDate(note.date)}</time></div></button>)}</div> : <div className="mx-auto mt-24 max-w-md text-center"><p className="text-xl font-semibold">Ничего не найдено</p><p className="mt-2 text-[#777]">Попробуйте изменить запрос или выбрать другой тег.</p><button type="button" onClick={() => { setQuery(''); setActiveTag('all') }} className="mt-5 rounded-lg border border-[#ddd] px-5 py-2 text-sm">Сбросить фильтры</button></div>}
+      {shown.length ? <div className="grid grid-cols-1 gap-4 md:grid-cols-2">{shown.map(note => <button key={note.id} type="button" onClick={() => navigate(`/notes/${note.id}`)} className="group flex min-h-[196px] flex-col rounded-[14px] border border-[#e3e3e3] bg-white p-6 text-left shadow-[0_3px_9px_rgba(0,0,0,.025)] transition hover:border-[#c6d4e6] hover:shadow-[0_8px_20px_rgba(0,0,0,.06)]"><h2 className="mb-3 line-clamp-2 text-[20px] font-bold leading-6 text-[#202020]">{note.title}</h2><p className="line-clamp-2 text-[15.5px] leading-[1.45] text-[#73777b]">{note.body.replace(/\n+/g, ' ')}</p><div className="mt-auto flex items-end justify-between gap-3 pt-5"><div className="flex flex-wrap gap-1.5">{(note.tagIds || []).map(tagId => <TagBadge key={tagId} tag={tags.find(tag => tag.id === tagId)} />)}</div><time dateTime={note.date} className="shrink-0 pb-1 text-[13px] text-[#9a9da1]">{shortDate(note.date)}</time></div></button>)}</div> : <div className="mx-auto mt-24 max-w-md text-center"><p className="text-xl font-semibold">Ничего не найдено</p><p className="mt-2 text-[#777]">Попробуйте изменить запрос или выбрать другой тег.</p><button type="button" onClick={() => { setQuery(''); setActiveTag('all') }} className="mt-5 rounded-lg border border-[#ddd] px-5 py-2 text-sm">Сбросить фильтры</button></div>}
     </main>
   </>
 }
@@ -104,26 +104,28 @@ function NoteEditor({ note, tags, navigate, saveNote, deleteNote, createTag }) {
   const isNew = !note
   const [title, setTitle] = useState(note?.title || '')
   const [body, setBody] = useState(note?.body || '')
-  const [selectedTags, setSelectedTags] = useState(note?.tagId != null ? [note.tagId] : [])
+  const [selectedTags, setSelectedTags] = useState(note?.tagIds || [])
   const [tagPickerOpen, setTagPickerOpen] = useState(false)
   const [createOpen, setCreateOpen] = useState(false)
   const [error, setError] = useState('')
   const [saved, setSaved] = useState(true)
   const [saving, setSaving] = useState(false)
-  // в БД у заметки один тег (note.tag_id), поэтому выбор одиночный
-  const toggleTag = id => { setSelectedTags(current => current.includes(id) ? [] : [id]); setSaved(false) }
+  const toggleTag = id => {
+    setSelectedTags(current => current.includes(id) ? current.filter(item => item !== id) : [...current, id])
+    setSaved(false)
+  }
   const handleSave = async event => {
     event?.preventDefault()
     if (saving) return
     if (!title.trim()) { setError('Введите название заметки'); return }
     setSaving(true)
-    const ok = await saveNote({ id: note?.id, title: title.trim(), body: body.trim(), tagId: selectedTags[0] ?? null })
+    const ok = await saveNote({ id: note?.id, title: title.trim(), body: body.trim(), tagIds: selectedTags })
     setSaving(false)
     if (ok) { setSaved(true); navigate('/') }
   }
   const addTag = async (name, color) => {
     const id = await createTag(name, color)
-    if (id != null) { setSelectedTags([id]); setSaved(false) }
+    if (id != null) { setSelectedTags(current => [...new Set([...current, id])]); setSaved(false) }
   }
 
   if (isNew) return <>
@@ -143,7 +145,7 @@ function TagManager({ tags, notes, navigate, createTag, updateTag, deleteTag }) 
   const [editing, setEditing] = useState(null)
   const [editName, setEditName] = useState('')
   const [colorPicker, setColorPicker] = useState(null)
-  const counts = Object.fromEntries(tags.map(tag => [tag.id, notes.filter(note => note.tagId === tag.id).length]))
+  const counts = Object.fromEntries(tags.map(tag => [tag.id, notes.filter(note => note.tagIds?.includes(tag.id)).length]))
   return <><BackBar navigate={navigate} /><main className="mx-auto max-w-[1000px] px-4 pb-12 pt-12 sm:px-5"><h1 className="mb-8 text-[21px] font-bold">Управление тегами</h1><form onSubmit={async event => { event.preventDefault(); if (name.trim()) { const id = await createTag(name.trim(), color); if (id != null) setName('') } }} className="rounded-[15px] border border-[#e3e3e3] bg-white p-6 shadow-[0_3px_9px_rgba(0,0,0,.025)]"><label className="block text-[13px] text-[#6e7275]">Новый тег</label><div className="mt-3 flex flex-wrap items-center gap-5"><input value={name} onChange={event => setName(event.target.value)} maxLength={24} placeholder="Например, Путешествия" className="field-focus h-11 min-w-[220px] flex-1 rounded-[9px] border border-[#dedfe2] px-4 text-[15px] outline-none placeholder:text-[#a0a2a5]" /><div className="flex items-center gap-2.5" aria-label="Цвет нового тега">{Object.entries(PALETTE).map(([key, value]) => <button key={key} type="button" aria-label={`Цвет ${key}`} aria-pressed={color === key} onClick={() => setColor(key)} className={`h-7 w-7 rounded-full border-[3px] border-white ${color === key ? 'ring-2 ring-[#4d5459]' : ''}`} style={{ backgroundColor: value.dot }} />)}</div><button type="submit" disabled={!name.trim()} className="h-11 rounded-[9px] bg-[#1c1c1c] px-6 text-[15px] text-white hover:bg-[#333] disabled:opacity-40">Создать тег</button></div></form><div className="mt-6 overflow-hidden rounded-[15px] border border-[#e3e3e3] bg-white shadow-[0_3px_9px_rgba(0,0,0,.025)]"><div className="grid grid-cols-[minmax(0,1fr)_90px_120px] items-center border-b border-[#ececec] px-6 py-4 text-[13px] text-[#777b7e] sm:grid-cols-[minmax(0,1fr)_180px_120px]"><span>Тег</span><span>Заметок</span><span className="text-right">Действия</span></div>{tags.map(tag => <div key={tag.id} className="grid min-h-[64px] grid-cols-[minmax(0,1fr)_90px_120px] items-center border-b border-[#ececec] px-6 py-2 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_180px_120px]"><div>{editing === tag.id ? <form onSubmit={event => { event.preventDefault(); if (editName.trim()) { updateTag(tag.id, { name: editName.trim() }); setEditing(null) } }} className="flex max-w-72 items-center gap-1"><input autoFocus value={editName} onChange={event => setEditName(event.target.value)} maxLength={24} className="field-focus min-w-0 flex-1 rounded-lg border border-[#dcdfe2] px-2 py-1 outline-none" /><button type="submit" aria-label="Сохранить название" className="p-1 text-[#56854e]"><Icon name="check" size={18} /></button></form> : <TagBadge tag={tag} />}</div><span className="text-[15px] text-[#444]">{counts[tag.id]}</span><div className="flex items-center justify-end gap-3 text-[#74797d]"><div className="relative"><button type="button" title="Изменить цвет" aria-label={`Изменить цвет тега ${tag.name}`} onClick={() => setColorPicker(colorPicker === tag.id ? null : tag.id)} className="icon-button h-7 w-7 hover:bg-[#f4f4f4]"><Icon name="palette" size={18} /></button>{colorPicker === tag.id && <div className="absolute right-0 top-8 z-10 flex gap-1 rounded-lg border border-[#ddd] bg-white p-2 shadow-lg">{Object.entries(PALETTE).map(([key, value]) => <button key={key} type="button" aria-label={`Выбрать цвет ${key}`} onClick={() => { updateTag(tag.id, { color: key }); setColorPicker(null) }} className="h-6 w-6 rounded-full" style={{ backgroundColor: value.dot }} />)}</div>}</div><button type="button" title="Переименовать" aria-label={`Переименовать тег ${tag.name}`} onClick={() => { setEditing(tag.id); setEditName(tag.name) }} className="icon-button h-7 w-7 hover:bg-[#f4f4f4]"><Icon name="edit" size={18} /></button><button type="button" title="Удалить" aria-label={`Удалить тег ${tag.name}`} onClick={() => { if (window.confirm(`Удалить тег «${tag.name}»? Он исчезнет из заметок.`)) deleteTag(tag.id) }} className="icon-button h-7 w-7 hover:bg-[#f4f4f4]"><Icon name="trash" size={18} /></button></div></div>)}</div></main></>
 }
 
@@ -223,13 +225,17 @@ export default function App() {
   const deleteTag = id => guard(async () => {
     await api.deleteTag(id)
     setTags(current => current.filter(tag => tag.id !== id))
-    setNotes(current => current.map(note => note.tagId === id ? { ...note, tagId: null } : note))
+    setNotes(current => current.map(note => ({
+      ...note,
+      tagIds: (note.tagIds || []).filter(tagId => tagId !== id),
+      tagId: (note.tagIds || []).find(tagId => tagId !== id) ?? null,
+    })))
   })
-  const saveNote = ({ id, title, body, tagId }) => guard(async () => {
-    // tag_id: 0 на бэкенде означает «снять тег»
+  const saveNote = ({ id, title, body, tagId, tagIds }) => guard(async () => {
+    const ids = Array.isArray(tagIds) ? tagIds : (tagId != null ? [tagId] : [])
     const raw = id
-      ? await api.updateNote(id, { title, text: body, tag_id: tagId ?? 0 })
-      : await api.createNote({ title, text: body, tag_id: tagId })
+      ? await api.updateNote(id, { title, text: body, tag_ids: ids })
+      : await api.createNote({ title, text: body, tag_ids: ids })
     const note = toNote(raw)
     setNotes(current => current.some(item => item.id === note.id) ? current.map(item => item.id === note.id ? note : item) : [note, ...current])
     return true

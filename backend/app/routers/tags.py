@@ -34,6 +34,7 @@ def get_tag(tag_id: int, db: DbSession, current_user: CurrentUser):
 @router.post("", response_model=TagOut, status_code=status.HTTP_201_CREATED)
 def create_tag(data: TagCreate, db: DbSession, current_user: CurrentUser):
     """создание тега"""
+    note = None
     if data.note_id is not None:
         note = db.query(Note).filter(
             Note.id == data.note_id, Note.user_id == current_user.id
@@ -41,21 +42,15 @@ def create_tag(data: TagCreate, db: DbSession, current_user: CurrentUser):
         if not note:
             raise HTTPException(status_code=400, detail="Заметка не найдена или чужая")
 
-    tag = Tag(
-        name=data.name,
-        color=data.color,
-        user_id=current_user.id,
-        note_id=data.note_id,
-    )
+    tag = Tag(name=data.name, color=data.color, user_id=current_user.id)
     db.add(tag)
     db.commit()
     db.refresh(tag)
 
-    if data.note_id is not None:
-        note = db.get(Note, data.note_id)
-        if note:
-            note.tag_id = tag.id
-            db.commit()
+    if note is not None:
+        note.tags.append(tag)
+        db.commit()
+        db.refresh(tag)
 
     return tag
 
@@ -79,24 +74,16 @@ def update_tag(
         tag.color = data.color
 
     if data.note_id is not None:
+        note = db.query(Note).filter(
+            Note.id == data.note_id, Note.user_id == current_user.id
+        ).first()
+        if not note:
+            raise HTTPException(status_code=400, detail="Заметка не найдена или чужая")
         if data.note_id == 0:
-            if tag.note_id:
-                note = db.get(Note, tag.note_id)
-                if note:
-                    note.tag_id = None
-            tag.note_id = None
+            note.tags = [existing_tag for existing_tag in note.tags if existing_tag.id != tag.id]
         else:
-            note = db.query(Note).filter(
-                Note.id == data.note_id, Note.user_id == current_user.id
-            ).first()
-            if not note:
-                raise HTTPException(status_code=400, detail="Заметка не найдена или чужая")
-            if tag.note_id and tag.note_id != data.note_id:
-                old_note = db.get(Note, tag.note_id)
-                if old_note:
-                    old_note.tag_id = None
-            tag.note_id = data.note_id
-            note.tag_id = tag.id
+            if tag not in note.tags:
+                note.tags.append(tag)
 
     db.commit()
     db.refresh(tag)
@@ -110,11 +97,6 @@ def delete_tag(tag_id: int, db: DbSession, current_user: CurrentUser):
     ).first()
     if not tag:
         raise HTTPException(status_code=404, detail="Тег не найден")
-
-    if tag.note_id:
-        note = db.get(Note, tag.note_id)
-        if note:
-            note.tag_id = None
 
     db.delete(tag)
     db.commit()

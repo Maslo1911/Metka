@@ -58,8 +58,7 @@ CREATE TABLE tag (
     id       INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     name     VARCHAR(50)  NOT NULL,
     color    VARCHAR(20),
-    user_id  INT NOT NULL REFERENCES "user" (id) ON DELETE CASCADE,
-    note_id  INT                          -- FK добавим после создания note
+    user_id  INT NOT NULL REFERENCES "user" (id) ON DELETE CASCADE
 );
 
 CREATE INDEX idx_tag_user_id ON tag (user_id);
@@ -72,28 +71,23 @@ CREATE TABLE note (
     title    VARCHAR(255),
     text     TEXT,
     date     TIMESTAMP DEFAULT NOW(),
-    user_id  INT NOT NULL REFERENCES "user" (id) ON DELETE CASCADE,
-    tag_id   INT                          -- FK добавим после создания tag
+    user_id  INT NOT NULL REFERENCES "user" (id) ON DELETE CASCADE
 );
 
 CREATE INDEX idx_note_user_id ON note (user_id);
 CREATE INDEX idx_note_date    ON note (date);
 
--- Связь tag ↔ note (как на ERD). DEFERRABLE из-за цикла.
-ALTER TABLE tag
-    ADD CONSTRAINT fk_tag_note
-    FOREIGN KEY (note_id) REFERENCES note (id)
-    ON DELETE SET NULL
-    DEFERRABLE INITIALLY DEFERRED;
+-- ---------------------------------------------------------------------
+-- 6. note_tag (связь многие-ко-многим между заметками и тегами)
+-- ---------------------------------------------------------------------
+CREATE TABLE note_tag (
+    note_id INT NOT NULL REFERENCES note (id) ON DELETE CASCADE,
+    tag_id  INT NOT NULL REFERENCES tag (id) ON DELETE CASCADE,
+    PRIMARY KEY (note_id, tag_id)
+);
 
-ALTER TABLE note
-    ADD CONSTRAINT fk_note_tag
-    FOREIGN KEY (tag_id) REFERENCES tag (id)
-    ON DELETE SET NULL
-    DEFERRABLE INITIALLY DEFERRED;
-
-CREATE INDEX idx_tag_note_id ON tag (note_id);
-CREATE INDEX idx_note_tag_id ON note (tag_id);
+CREATE INDEX idx_note_tag_note_id ON note_tag (note_id);
+CREATE INDEX idx_note_tag_tag_id  ON note_tag (tag_id);
 
 -- =====================================================================
 -- ТЕСТОВЫЕ ДАННЫЕ
@@ -132,30 +126,24 @@ INSERT INTO note (title, text, user_id, date) VALUES
     ('Заметка админа',        'Проверить логи и модерацию',         5, NOW()),
     ('Рецепт пасты',          'Спагетти + томатный соус + базилик', 4, NOW() - INTERVAL '4 days');
 
--- Теги (привязаны к пользователям и частично к заметкам)
-INSERT INTO tag (name, color, user_id, note_id) VALUES
-    ('еда',        '#FF6B6B', 1, 1),   -- к заметке «Купить хлеб»
-    ('личное',     '#4ECDC4', 1, 2),   -- к «Позвонить маме»
-    ('работа',     '#45B7D1', 1, 3),   -- к «Идея для проекта»
-    ('спорт',      '#96CEB4', 2, 4),
-    ('чтение',     '#FFEAA7', 2, 5),
-    ('клиенты',    '#DDA0DD', 3, 6),
-    ('покупки',    '#98D8C8', 3, 7),
-    ('планирование','#F7DC6F', 4, 8),
-    ('админ',      '#BB8FCE', 5, 9),
-    ('рецепты',    '#F1948A', 4, 10);
+-- Теги (привязаны к пользователям и связаны со заметками через note_tag)
+INSERT INTO tag (name, color, user_id) VALUES
+    ('еда',        '#FF6B6B', 1),
+    ('личное',     '#4ECDC4', 1),
+    ('работа',     '#45B7D1', 1),
+    ('спорт',      '#96CEB4', 2),
+    ('чтение',     '#FFEAA7', 2),
+    ('клиенты',    '#DDA0DD', 3),
+    ('покупки',    '#98D8C8', 3),
+    ('планирование','#F7DC6F', 4),
+    ('админ',      '#BB8FCE', 5),
+    ('рецепты',    '#F1948A', 4);
 
--- Обновляем note.tag_id, чтобы двусторонняя связь была заполнена
-UPDATE note SET tag_id = 1  WHERE id = 1;
-UPDATE note SET tag_id = 2  WHERE id = 2;
-UPDATE note SET tag_id = 3  WHERE id = 3;
-UPDATE note SET tag_id = 4  WHERE id = 4;
-UPDATE note SET tag_id = 5  WHERE id = 5;
-UPDATE note SET tag_id = 6  WHERE id = 6;
-UPDATE note SET tag_id = 7  WHERE id = 7;
-UPDATE note SET tag_id = 8  WHERE id = 8;
-UPDATE note SET tag_id = 9  WHERE id = 9;
-UPDATE note SET tag_id = 10 WHERE id = 10;
+INSERT INTO note_tag (note_id, tag_id) VALUES
+    (1, 1), (2, 2), (3, 3),
+    (4, 4), (5, 5), (6, 6),
+    (7, 7), (8, 8), (9, 9),
+    (10, 10);
 
 COMMIT;
 
@@ -163,17 +151,19 @@ COMMIT;
 -- 3 SELECT-запроса (доказательство, что БД работает)
 -- =====================================================================
 
--- 1. Все заметки пользователя с id = 1
+-- 1. Все заметки пользователя с id = 1 + связанные теги
 SELECT n.id, n.title, n.text, n.date, t.name AS tag_name, t.color
 FROM note n
-LEFT JOIN tag t ON n.tag_id = t.id
+LEFT JOIN note_tag nt ON nt.note_id = n.id
+LEFT JOIN tag t ON t.id = nt.tag_id
 WHERE n.user_id = 1
 ORDER BY n.date DESC;
 
--- 2. Только заметки, у которых есть тег (заполненный tag_id)
+-- 2. Только заметки, у которых есть хотя бы один тег
 SELECT n.id, n.title, t.name AS tag, u.login AS author
 FROM note n
-JOIN tag t ON n.tag_id = t.id
+JOIN note_tag nt ON nt.note_id = n.id
+JOIN tag t ON t.id = nt.tag_id
 JOIN "user" u ON n.user_id = u.id
 ORDER BY n.date DESC;
 

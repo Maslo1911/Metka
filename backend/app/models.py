@@ -49,6 +49,17 @@ class User(Base):
     )
 
 
+class NoteTag(Base):
+    __tablename__ = "note_tag"
+
+    note_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("note.id", ondelete="CASCADE"), primary_key=True
+    )
+    tag_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("tag.id", ondelete="CASCADE"), primary_key=True
+    )
+
+
 class Tag(Base):
     __tablename__ = "tag"
 
@@ -58,19 +69,17 @@ class Tag(Base):
     user_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("user.id", ondelete="CASCADE"), nullable=False
     )
-    note_id: Mapped[Optional[int]] = mapped_column(
-        Integer, ForeignKey("note.id", ondelete="SET NULL"), nullable=True
-    )
 
     user: Mapped["User"] = relationship("User", back_populates="tags")
-    # ↓ Связь Tag → Note. back_populates НЕ используем,
-    #   потому что это независимая связь, а не обратная к Note.tags.
-    note: Mapped[Optional["Note"]] = relationship(
+    notes: Mapped[list["Note"]] = relationship(
         "Note",
-        foreign_keys=[note_id],
-        backref="tags_linked",  # можно дать любое имя, чтобы не конфликтовало
-        post_update=True,       # важно: убирает циклическую зависимость при INSERT
+        secondary="note_tag",
+        back_populates="tags",
     )
+
+    @property
+    def note_id(self) -> Optional[int]:
+        return self.notes[0].id if self.notes else None
 
 
 class Note(Base):
@@ -85,15 +94,18 @@ class Note(Base):
     user_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("user.id", ondelete="CASCADE"), nullable=False
     )
-    tag_id: Mapped[Optional[int]] = mapped_column(
-        Integer, ForeignKey("tag.id", ondelete="SET NULL"), nullable=True
-    )
 
     user: Mapped["User"] = relationship("User", back_populates="notes")
-    # ↓ Связь Note → Tag. Тоже независимая, back_populates не используем.
-    tag: Mapped[Optional["Tag"]] = relationship(
+    tags: Mapped[list["Tag"]] = relationship(
         "Tag",
-        foreign_keys=[tag_id],
-        backref="notes_linked",
-        post_update=True,
+        secondary="note_tag",
+        back_populates="notes",
     )
+
+    @property
+    def tag_id(self) -> Optional[int]:
+        return self.tags[0].id if self.tags else None
+
+    @property
+    def tag_ids(self) -> list[int]:
+        return [tag.id for tag in self.tags]

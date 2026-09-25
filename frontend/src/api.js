@@ -78,7 +78,9 @@ export const toNote = n => ({
   id: n.id,
   title: n.title || '',
   body: n.text || '',
-  tagId: n.tag_id ?? null,
+  tagId: n.tag_id ?? n.tag_ids?.[0] ?? null,
+  tagIds: Array.isArray(n.tag_ids) ? n.tag_ids : (n.tag_id != null ? [n.tag_id] : []),
+  tags: Array.isArray(n.tags) ? n.tags.map(toTag) : [],
   date: n.date,
 })
 

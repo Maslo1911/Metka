@@ -77,12 +77,14 @@ class NoteBase(BaseModel):
 
 class NoteCreate(NoteBase):
     tag_id: Optional[int] = None
+    tag_ids: Optional[List[int]] = None
 
 
 class NoteUpdate(BaseModel):
     title: Optional[str] = Field(None, max_length=255)
     text: Optional[str] = None
     tag_id: Optional[int] = None
+    tag_ids: Optional[List[int]] = None
 
 
 class NoteOut(NoteBase):
@@ -90,6 +92,8 @@ class NoteOut(NoteBase):
     date: Optional[datetime] = None
     user_id: int
     tag_id: Optional[int] = None
+    tag_ids: List[int] = Field(default_factory=list)
+    tags: List[TagOut] = Field(default_factory=list)
     model_config = ConfigDict(from_attributes=True)
 
 
