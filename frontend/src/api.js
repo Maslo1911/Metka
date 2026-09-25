@@ -99,4 +99,7 @@ export const api = {
   createTag: data => request('/api/tags', { method: 'POST', json: data }),
   updateTag: (id, data) => request(`/api/tags/${id}`, { method: 'PATCH', json: data }),
   deleteTag: id => request(`/api/tags/${id}`, { method: 'DELETE' }),
+
+  users: () => request('/api/users'),
+  deleteUser: id => request(`/api/users/${id}`, { method: 'DELETE' }),
 }

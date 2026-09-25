@@ -33,6 +33,7 @@ function Icon({ name, size = 20, className = '' }) {
     eye: <><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z" /><circle cx="12" cy="12" r="2.5" /></>,
     eyeOff: <><path d="m3 3 18 18M9.5 6.3A12 12 0 0 1 12 6c6.5 0 10 6 10 6a16 16 0 0 1-3.3 3.8M6 8C3.4 9.7 2 12 2 12s3.5 6 10 6c1.5 0 2.8-.3 4-.8" /></>,
     x: <path d="M5 5 19 19M19 5 5 19" />,
+    shield: <><path d="M12 3.5 5 6v5.2c0 4.6 2.9 7.8 7 9.3 4.1-1.5 7-4.7 7-9.3V6l-7-2.5Z" /><path d="m9 12 2 2 4-4" /></>,
   }
   return <svg aria-hidden="true" className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{paths[name]}</svg>
 }
@@ -76,7 +77,7 @@ function Home({ notes, tags, user, navigate, onLogout }) {
         <button type="button" onClick={() => { setActiveTag('all'); setQuery('') }} aria-label="Metka — все заметки" className="mr-auto lg:mr-0 lg:w-[168px] text-left"><Logo /></button>
         <label className="relative order-3 w-full lg:order-none lg:flex-1"><Icon name="search" size={21} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#9ba1a5]" /><span className="sr-only">Поиск по тексту заметок</span><input value={query} onChange={event => setQuery(event.target.value)} type="search" placeholder="Поиск по тексту заметок" className="field-focus h-11 w-full rounded-[10px] border border-[#e1e3e5] bg-white pl-12 pr-4 text-[15px] outline-none placeholder:text-[#9b9da1]" /></label>
         <button type="button" onClick={() => navigate('/notes/new')} className="inline-flex h-11 items-center gap-2 rounded-[9px] bg-[#1c1c1c] px-5 text-[15px] text-white hover:bg-[#343434]"><Icon name="plus" size={20} />Новая заметка</button>
-        <div className="relative"><button type="button" aria-label="Профиль" onClick={() => setProfileOpen(value => !value)} className="grid h-10 w-10 place-items-center rounded-full bg-[#deebff] text-[13px] font-bold text-[#4277b7]">{initials}</button>{profileOpen && <div className="absolute right-0 top-12 z-20 min-w-44 rounded-xl border border-[#e8e8e8] bg-white p-2 shadow-lg"><div className="px-3 py-2 text-sm"><div className="font-semibold">{user?.name}</div><div className="text-[#8a8e92]">@{user?.login}</div></div><button type="button" onClick={onLogout} className="w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-[#f5f6f7]">Выйти</button></div>}</div>
+        <div className="relative"><button type="button" aria-label="Профиль" onClick={() => setProfileOpen(value => !value)} className="grid h-10 w-10 place-items-center rounded-full bg-[#deebff] text-[13px] font-bold text-[#4277b7]">{initials}</button>{profileOpen && <div className="absolute right-0 top-12 z-20 min-w-44 rounded-xl border border-[#e8e8e8] bg-white p-2 shadow-lg"><div className="px-3 py-2 text-sm"><div className="font-semibold">{user?.name}</div><div className="text-[#8a8e92]">@{user?.login}</div></div>{user?.role_id === 1 && <button type="button" onClick={() => { setProfileOpen(false); navigate('/admin') }} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm hover:bg-[#f5f6f7]"><Icon name="shield" size={16} />Админ-панель</button>}<button type="button" onClick={onLogout} className="w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-[#f5f6f7]">Выйти</button></div>}</div>
       </div>
     </header>
     <main className="px-5 pb-12 sm:px-9">
@@ -147,6 +148,66 @@ function TagManager({ tags, notes, navigate, createTag, updateTag, deleteTag }) 
   const [colorPicker, setColorPicker] = useState(null)
   const counts = Object.fromEntries(tags.map(tag => [tag.id, notes.filter(note => note.tagIds?.includes(tag.id)).length]))
   return <><BackBar navigate={navigate} /><main className="mx-auto max-w-[1000px] px-4 pb-12 pt-12 sm:px-5"><h1 className="mb-8 text-[21px] font-bold">Управление тегами</h1><form onSubmit={async event => { event.preventDefault(); if (name.trim()) { const id = await createTag(name.trim(), color); if (id != null) setName('') } }} className="rounded-[15px] border border-[#e3e3e3] bg-white p-6 shadow-[0_3px_9px_rgba(0,0,0,.025)]"><label className="block text-[13px] text-[#6e7275]">Новый тег</label><div className="mt-3 flex flex-wrap items-center gap-5"><input value={name} onChange={event => setName(event.target.value)} maxLength={24} placeholder="Например, Путешествия" className="field-focus h-11 min-w-[220px] flex-1 rounded-[9px] border border-[#dedfe2] px-4 text-[15px] outline-none placeholder:text-[#a0a2a5]" /><div className="flex items-center gap-2.5" aria-label="Цвет нового тега">{Object.entries(PALETTE).map(([key, value]) => <button key={key} type="button" aria-label={`Цвет ${key}`} aria-pressed={color === key} onClick={() => setColor(key)} className={`h-7 w-7 rounded-full border-[3px] border-white ${color === key ? 'ring-2 ring-[#4d5459]' : ''}`} style={{ backgroundColor: value.dot }} />)}</div><button type="submit" disabled={!name.trim()} className="h-11 rounded-[9px] bg-[#1c1c1c] px-6 text-[15px] text-white hover:bg-[#333] disabled:opacity-40">Создать тег</button></div></form><div className="mt-6 overflow-hidden rounded-[15px] border border-[#e3e3e3] bg-white shadow-[0_3px_9px_rgba(0,0,0,.025)]"><div className="grid grid-cols-[minmax(0,1fr)_90px_120px] items-center border-b border-[#ececec] px-6 py-4 text-[13px] text-[#777b7e] sm:grid-cols-[minmax(0,1fr)_180px_120px]"><span>Тег</span><span>Заметок</span><span className="text-right">Действия</span></div>{tags.map(tag => <div key={tag.id} className="grid min-h-[64px] grid-cols-[minmax(0,1fr)_90px_120px] items-center border-b border-[#ececec] px-6 py-2 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_180px_120px]"><div>{editing === tag.id ? <form onSubmit={event => { event.preventDefault(); if (editName.trim()) { updateTag(tag.id, { name: editName.trim() }); setEditing(null) } }} className="flex max-w-72 items-center gap-1"><input autoFocus value={editName} onChange={event => setEditName(event.target.value)} maxLength={24} className="field-focus min-w-0 flex-1 rounded-lg border border-[#dcdfe2] px-2 py-1 outline-none" /><button type="submit" aria-label="Сохранить название" className="p-1 text-[#56854e]"><Icon name="check" size={18} /></button></form> : <TagBadge tag={tag} />}</div><span className="text-[15px] text-[#444]">{counts[tag.id]}</span><div className="flex items-center justify-end gap-3 text-[#74797d]"><div className="relative"><button type="button" title="Изменить цвет" aria-label={`Изменить цвет тега ${tag.name}`} onClick={() => setColorPicker(colorPicker === tag.id ? null : tag.id)} className="icon-button h-7 w-7 hover:bg-[#f4f4f4]"><Icon name="palette" size={18} /></button>{colorPicker === tag.id && <div className="absolute right-0 top-8 z-10 flex gap-1 rounded-lg border border-[#ddd] bg-white p-2 shadow-lg">{Object.entries(PALETTE).map(([key, value]) => <button key={key} type="button" aria-label={`Выбрать цвет ${key}`} onClick={() => { updateTag(tag.id, { color: key }); setColorPicker(null) }} className="h-6 w-6 rounded-full" style={{ backgroundColor: value.dot }} />)}</div>}</div><button type="button" title="Переименовать" aria-label={`Переименовать тег ${tag.name}`} onClick={() => { setEditing(tag.id); setEditName(tag.name) }} className="icon-button h-7 w-7 hover:bg-[#f4f4f4]"><Icon name="edit" size={18} /></button><button type="button" title="Удалить" aria-label={`Удалить тег ${tag.name}`} onClick={() => { if (window.confirm(`Удалить тег «${tag.name}»? Он исчезнет из заметок.`)) deleteTag(tag.id) }} className="icon-button h-7 w-7 hover:bg-[#f4f4f4]"><Icon name="trash" size={18} /></button></div></div>)}</div></main></>
+}
+
+function RoleBadge({ roleId }) {
+  const isAdmin = roleId === 1
+  return <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${isAdmin ? 'bg-[#fdeccb] text-[#8a5a12]' : 'bg-[#eef0f2] text-[#5b5f63]'}`}>{isAdmin ? 'Администратор' : 'Пользователь'}</span>
+}
+
+function AdminPanel({ navigate, currentUser }) {
+  const [users, setUsers] = useState([])
+  const [status, setStatus] = useState('loading') // loading | ready | error
+  const [error, setError] = useState('')
+  const [busyId, setBusyId] = useState(null)
+  const [toast, setToast] = useState('')
+
+  const load = useCallback(async () => {
+    setStatus('loading')
+    try {
+      setUsers(await api.users())
+      setStatus('ready')
+    } catch (err) {
+      setError(err.message)
+      setStatus('error')
+    }
+  }, [])
+  useEffect(() => { load() }, [load])
+  useEffect(() => { if (!toast) return; const timer = setTimeout(() => setToast(''), 4500); return () => clearTimeout(timer) }, [toast])
+
+  const removeUser = async targetUser => {
+    if (targetUser.id === currentUser?.id) return
+    if (!window.confirm(`Удалить пользователя «${targetUser.name}»? Все его заметки и теги будут удалены без возможности восстановления.`)) return
+    setBusyId(targetUser.id)
+    try {
+      await api.deleteUser(targetUser.id)
+      setUsers(current => current.filter(item => item.id !== targetUser.id))
+    } catch (err) {
+      setToast(err.message)
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  return <>
+    <BackBar navigate={navigate} />
+    <main className="mx-auto max-w-[1000px] px-4 pb-12 pt-12 sm:px-5">
+      <h1 className="mb-8 flex items-center gap-3 text-[21px] font-bold"><Icon name="shield" size={22} className="text-[#3f80d4]" />Админ-панель</h1>
+      {status === 'loading' && <p className="text-[#777]">Загрузка…</p>}
+      {status === 'error' && <div className="rounded-[15px] border border-[#f3d0d0] bg-[#fff6f6] p-6 text-[#a13d3d]"><p>{error}</p><button type="button" onClick={load} className="mt-3 rounded-lg border border-[#ddd] bg-white px-4 py-2 text-sm text-[#333]">Повторить</button></div>}
+      {status === 'ready' && <div className="overflow-hidden rounded-[15px] border border-[#e3e3e3] bg-white shadow-[0_3px_9px_rgba(0,0,0,.025)]">
+        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_150px_90px] items-center border-b border-[#ececec] px-6 py-4 text-[13px] text-[#777b7e] sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_170px_110px]"><span>Имя</span><span>Логин</span><span>Роль</span><span className="text-right">Действия</span></div>
+        {users.map(item => <div key={item.id} className="grid min-h-[60px] grid-cols-[minmax(0,1fr)_minmax(0,1fr)_150px_90px] items-center border-b border-[#ececec] px-6 py-2 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_170px_110px]">
+          <span className="truncate text-[15px] text-[#232323]">{item.name}{item.id === currentUser?.id && <span className="ml-2 text-xs text-[#9a9da1]">(вы)</span>}</span>
+          <span className="truncate text-[15px] text-[#555]">@{item.login}</span>
+          <RoleBadge roleId={item.role_id} />
+          <div className="flex justify-end"><button type="button" title="Удалить пользователя" aria-label={`Удалить пользователя ${item.name}`} disabled={item.id === currentUser?.id || busyId === item.id} onClick={() => removeUser(item)} className="icon-button h-7 w-7 hover:bg-[#f4f4f4] disabled:cursor-not-allowed disabled:opacity-30"><Icon name="trash" size={18} /></button></div>
+        </div>)}
+        {!users.length && <p className="px-6 py-10 text-center text-[#8d9093]">Пользователей нет.</p>}
+      </div>}
+    </main>
+    {toast && <div role="alert" className="fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-xl bg-[#1c1c1c] px-5 py-3 text-sm text-white shadow-lg">{toast}</div>}
+  </>
 }
 
 function Auth({ onAuthed }) {
@@ -254,6 +315,11 @@ export default function App() {
     page = <main className="grid min-h-screen place-items-center text-[#777]">Загрузка…</main>
   } else if (session === 'error') {
     page = <main className="grid min-h-screen place-items-center p-5 text-center"><div><p className="text-xl font-semibold">Не удалось загрузить данные</p><p className="mt-2 text-[#777]">{loadError}</p><button type="button" onClick={loadAll} className="mt-5 rounded-lg bg-[#1c1c1c] px-5 py-2 text-sm text-white">Повторить</button></div></main>
+  } else if (path === '/admin' && user?.role_id !== 1) {
+    // не-админ по прямой ссылке /admin — молча возвращаем на главную
+    page = <Home notes={notes} tags={tags} user={user} navigate={navigate} onLogout={logout} />
+  } else if (path === '/admin') {
+    page = <AdminPanel navigate={navigate} currentUser={user} />
   } else if (path === '/tags') {
     page = <TagManager tags={tags} notes={notes} navigate={navigate} createTag={createTag} updateTag={updateTag} deleteTag={deleteTag} />
   } else if (path === '/notes/new') {
