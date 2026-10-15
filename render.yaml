@@ -15,7 +15,7 @@ services:
       - key: SECRET_KEY
         generateValue: true
       - key: ADMIN_PASSWORD
-        sync: false   # Render спросит значение при создании — пароль для входа под логином admin
+        generateValue: true   # пароль для логина admin: Dashboard → metka → Environment
 
 databases:
   - name: metka-db
