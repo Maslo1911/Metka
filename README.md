@@ -1,5 +1,9 @@
 # Название сервиса: Metka
 
+- Репозиторий: https://github.com/Maslo1911/Metka
+- Руководство пользователя: [USER_GUIDE.md](USER_GUIDE.md)
+- Деплой (Render, бесплатно): см. [USER_GUIDE.md → Деплой](USER_GUIDE.md#деплой-на-бесплатном-хостинге), конфигурация — `Dockerfile` и `render.yaml`
+
 ## Запуск приложения
 
 ### 1. База данных
