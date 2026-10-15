@@ -78,3 +78,6 @@ npm run build
 Все эндпоинты — в Swagger (`/docs`).
 Авторизация: `Authorization: Bearer <token>`.
 Токен получается через `POST /api/auth/login` (form-data: username, password).
+
+## Деплой
+Инструкция по развёртыванию на Render — в [USER_GUIDE.md](USER_GUIDE.md).
